@@ -5,13 +5,15 @@ PSQL="psql --username=freecodecamp --dbname=number_guess -t --no-align -c"
 echo "Enter your username:"
 read username
 
-NAME=$($PSQL "SELECT username FROM Users WHERE username='$username'")
+NAME=$($PSQL "SELECT username FROM users WHERE username='$username'")
+ATTEMPTS=$($PSQL "SELECT COUNT(*) FROM users INNER JOIN games USING(user_id) WHERE username='$username'")
+BEST_GAME=$($PSQL "SELECT MIN(number_of_attempts) FROM users INNER JOIN games USING(user_id) WHERE username='$username'")
 
 if [[ -z $NAME ]]; then
     INSERT_USER=$($PSQL "INSERT INTO users(username) VALUES('$username')")
     echo "Welcome, $username! It looks like this is your first time here."
 else
-    echo "Welcome back, $username! You have played <games_played> games, and your best game took <best_game> guesses."
+    echo "Welcome back, $username! You have played $ATTEMPTS games, and your best game took $BEST_GAME guesses."
 fi
 
 random_number=$((1 + $RANDOM % 100))
@@ -36,7 +38,10 @@ while read GUESSING; do
     fi
     GUESS=$(( $GUESS + 1 ))
 done
- if [[ $GUESS == 1 ]]
-  then
-   echo "You guessed it in $GUESS tries. The secret number was $random_number. Nice job!"
-  fi
+
+if [[ $GUESS == 1 ]]; then
+    echo "You guessed it in $GUESS tries. The secret number was $random_number. Nice job!"
+fi
+
+USER_ID=$($PSQL "SELECT user_id FROM users WHERE username = '$username'")
+INSERT_GAME=$($PSQL "INSERT INTO games(number_of_attempts, user_id) VALUES($GUESS, $USER_ID)")
